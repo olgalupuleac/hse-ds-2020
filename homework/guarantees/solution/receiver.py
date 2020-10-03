@@ -9,6 +9,13 @@ from dslib import Communicator, Message
 class Receiver:
     def __init__(self, name, addr):
         self._comm = Communicator(name, addr)
+        self._received_messages = set()
+
+    def _receive_exactly_once(self, msg):
+        if msg not in self._received_messages:
+            self._received_messages.add(msg)
+            self._comm.send_local(msg)
+        self._comm.send(msg, msg._sender)
 
     def run(self):
         while True:
@@ -18,25 +25,28 @@ class Receiver:
             # underlying transport: unreliable with possible repetitions
             # goal: receiver knows all that were recieved but at most once
             if msg.type == 'INFO-1':
-                pass
+                if msg not in self._received_messages:
+                    self._received_messages.add(msg)
+                    self._comm.send_local(msg)
 
             # deliver INFO-2 message to receiver user
             # underlying transport: unreliable with possible repetitions
             # goal: receiver knows all at least once
             elif msg.type == 'INFO-2':
-                pass
+                self._comm.send_local(msg)
+                self._comm.send(msg, msg._sender)
 
             # deliver INFO-3 message to receiver user
             # underlying transport: unreliable with possible repetitions
             # goal: receiver knows all exactly once
             elif msg.type == 'INFO-3':
-                pass
+                self._receive_exactly_once(msg)
 
             # deliver INFO-4 message to receiver user
             # underlying transport: unreliable with possible repetitions
             # goal: receiver knows all exactly once in the order
             elif msg.type == 'INFO-4':
-                pass
+                self._receive_exactly_once(msg)
 
             # unknown message
             else:

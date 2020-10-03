@@ -248,6 +248,53 @@ class RandomDropsTestCase(BaseTestCase):
         self.assertIsNone(sender_resp)
 
 
+class ExactlyOnceOrderTestCase(BaseTestCase):
+
+    def runTest(self):
+        self.assertTrue(self.ts.wait_processes(2, 1), "Startup timeout")
+        num_messages = 3
+        rate = 3
+        self.ts.set_repeat_rate(1, rate)
+        self.ts.set_event_reordering(True)
+        for i in range(num_messages):
+            sender_req = Message('INFO-4', str(i))
+            self.ts.send_local_message('sender', sender_req, 1)
+        messages = []
+        while True:
+            sender_resp = self.ts.step_until_local_message('receiver', 1)
+            if sender_resp is None:
+                break
+            messages.append(sender_resp)
+        self.assertGreaterEqual(len(messages), num_messages)
+        for i in range(len(messages)):
+            self.assertEqual(messages[i].type, 'INFO-4')
+            self.assertEqual(int(messages[i].body), i)
+
+
+class ExactlyOnceOrderDropTestCase(BaseTestCase):
+
+    def runTest(self):
+        self.assertTrue(self.ts.wait_processes(2, 1), "Startup timeout")
+        num_messages = 10
+        rate = 1
+        self.ts.set_repeat_rate(1, rate)
+        self.ts.set_event_reordering(True)
+        self.ts.set_message_drop_rate(0.5)
+        for i in range(num_messages):
+            sender_req = Message('INFO-4', str(i))
+            self.ts.send_local_message('sender', sender_req, 1)
+        messages = []
+        while True:
+            sender_resp = self.ts.step_until_local_message('receiver', 1)
+            if sender_resp is None:
+                break
+            messages.append(sender_resp)
+        self.assertGreaterEqual(len(messages), num_messages)
+        for i in range(len(messages)):
+            self.assertEqual(messages[i].type, 'INFO-4')
+            self.assertEqual(int(messages[i].body), i)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(dest='impl_dir', metavar='DIRECTORY',
@@ -275,7 +322,9 @@ def main():
         ExactlyOnceTestCase(
             args.impl_dir, args.debug),
         RandomDropsTestCase(
-            args.impl_dir, args.debug)
+            args.impl_dir, args.debug),
+        ExactlyOnceOrderTestCase(args.impl_dir, args.debug),
+        ExactlyOnceOrderDropTestCase(args.impl_dir, args.debug)
     ]
 
     for i in range(args.n):
