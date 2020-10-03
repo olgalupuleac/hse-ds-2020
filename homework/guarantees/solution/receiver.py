@@ -15,7 +15,7 @@ class Receiver:
         if msg not in self._received_messages:
             self._received_messages.add(msg)
             self._comm.send_local(msg)
-        self._comm.send(msg, msg._sender)
+        self._comm.send(msg, msg.sender)
 
     def run(self):
         while True:
@@ -34,7 +34,7 @@ class Receiver:
             # goal: receiver knows all at least once
             elif msg.type == 'INFO-2':
                 self._comm.send_local(msg)
-                self._comm.send(msg, msg._sender)
+                self._comm.send(msg, msg.sender)
 
             # deliver INFO-3 message to receiver user
             # underlying transport: unreliable with possible repetitions
